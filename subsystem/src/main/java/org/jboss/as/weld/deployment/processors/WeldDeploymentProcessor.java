@@ -82,6 +82,7 @@ import org.jboss.weld.bootstrap.spi.Metadata;
 import org.jboss.weld.ejb.spi.EjbServices;
 import org.jboss.weld.injection.spi.EjbInjectionServices;
 import org.jboss.weld.injection.spi.JpaInjectionServices;
+import org.jboss.weld.injection.spi.ResourceInjectionServices;
 import org.jboss.weld.validation.spi.ValidationServices;
 
 /**
@@ -97,6 +98,7 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
         final DeploymentUnit parent = deploymentUnit.getParent() == null ? deploymentUnit : deploymentUnit.getParent();
         final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
         final ResourceRoot deploymentRoot = deploymentUnit.getAttachment(Attachments.DEPLOYMENT_ROOT);
+        final EEApplicationDescription applicationDescription = new EEApplicationDescription();
         if (!WeldDeploymentMarker.isPartOfWeldDeployment(deploymentUnit)) {
 
             //if there are CDI annotation present and this is the top level deployment we log a warning
@@ -169,6 +171,9 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
             final ResourceRoot subDeploymentRoot = subDeployment.getAttachment(Attachments.DEPLOYMENT_ROOT);
             final EjbInjectionServices ejbInjectionServices = new WeldEjbInjectionServices(deploymentUnit.getServiceRegistry(), eeModuleDescription, eeApplicationDescription, subDeploymentRoot.getRoot());
             bdm.addService(EjbInjectionServices.class, ejbInjectionServices);
+            final ResourceInjectionServices resourceInjectionServices = new WeldResourceInjectionServices(deploymentUnit.getServiceRegistry(), eeModuleDescription);
+            bdm.addService(ResourceInjectionServices.class, resourceInjectionServices);
+
         }
 
         for (Map.Entry<ModuleIdentifier, BeanDeploymentModule> entry : bdmsByIdentifier.entrySet()) {
@@ -198,6 +203,9 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
         final EjbInjectionServices ejbInjectionServices = new WeldEjbInjectionServices(deploymentUnit.getServiceRegistry(), eeModuleDescription, eeApplicationDescription, deploymentRoot.getRoot());
         weldContainer.addWeldService(EjbInjectionServices.class, ejbInjectionServices);
         rootBeanDeploymentModule.addService(EjbInjectionServices.class, ejbInjectionServices);
+        final ResourceInjectionServices resourceInjectionServices = new WeldResourceInjectionServices(deploymentUnit.getServiceRegistry(), eeModuleDescription);
+        rootBeanDeploymentModule.addService(ResourceInjectionServices.class, resourceInjectionServices);
+        weldContainer.addWeldService(ResourceInjectionServices.class, resourceInjectionServices);
 
         weldContainer.addWeldService(EjbServices.class, new WeldEjbServices(deploymentUnit.getServiceRegistry()));
 
@@ -211,7 +219,6 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
 
         weldServiceBuilder.addDependencies(TCCLSingletonService.SERVICE_NAME);
 
-        installResourceInjectionService(serviceTarget, deploymentUnit, weldService, weldServiceBuilder);
         installSecurityService(serviceTarget, deploymentUnit, weldService, weldServiceBuilder);
         installTransactionService(serviceTarget, deploymentUnit, weldService, weldServiceBuilder);
 
@@ -253,20 +260,6 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
                 .addDependency(ServiceBuilder.DependencyType.OPTIONAL, SimpleSecurityManagerService.SERVICE_NAME, SimpleSecurityManager.class, service.getSecurityManagerValue()).install();
 
         weldServiceBuilder.addDependency(serviceName, WeldSecurityServices.class, weldService.getSecurityServices());
-
-        return serviceName;
-    }
-
-    private ServiceName installResourceInjectionService(ServiceTarget serviceTarget, DeploymentUnit deploymentUnit,
-                                                        WeldService weldService, ServiceBuilder<WeldContainer> weldServiceBuilder) {
-        final WeldResourceInjectionServices service = new WeldResourceInjectionServices();
-
-        final ServiceName serviceName = deploymentUnit.getServiceName().append(WeldResourceInjectionServices.SERVICE_NAME);
-
-        serviceTarget.addService(serviceName, service).install();
-
-        weldServiceBuilder.addDependency(serviceName, WeldResourceInjectionServices.class, weldService
-                .getResourceInjectionServices());
 
         return serviceName;
     }

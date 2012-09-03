@@ -52,7 +52,6 @@ public class WeldService implements Service<WeldContainer> {
     private final WeldContainer weldContainer;
     private final String deploymentName;
 
-    private final InjectedValue<WeldResourceInjectionServices> resourceInjectionServices = new InjectedValue<WeldResourceInjectionServices>();
     private final InjectedValue<WeldSecurityServices> securityServices = new InjectedValue<WeldSecurityServices>();
     private final InjectedValue<WeldTransactionServices> weldTransactionServices = new InjectedValue<WeldTransactionServices>();
 
@@ -69,10 +68,6 @@ public class WeldService implements Service<WeldContainer> {
             weldContainer.addWeldService(SecurityServices.class, securityServices.getValue());
             weldContainer.addWeldService(TransactionServices.class, weldTransactionServices.getValue());
 
-            weldContainer.addWeldService(ResourceInjectionServices.class, resourceInjectionServices.getValue());
-            for (BeanDeploymentArchive bda : weldContainer.getBeanDeploymentArchives()) {
-                bda.getServices().add(ResourceInjectionServices.class, resourceInjectionServices.getValue());
-            }
             // start weld
             weldContainer.start();
         } catch (Exception e) {
@@ -98,10 +93,6 @@ public class WeldService implements Service<WeldContainer> {
 
     public InjectedValue<WeldTransactionServices> getWeldTransactionServices() {
         return weldTransactionServices;
-    }
-
-    public InjectedValue<WeldResourceInjectionServices> getResourceInjectionServices() {
-        return resourceInjectionServices;
     }
 
     public InjectedValue<WeldSecurityServices> getSecurityServices() {
